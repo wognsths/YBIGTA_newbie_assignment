@@ -1,4 +1,5 @@
-library(readr);library(tidyverse);library(data.table)
+library(readr);library(tidyverse);library(data.table);library(knitr)
+library(kableExtra);library(htmltools);library(rstudioapi)
 ### Advertising.csv를 불러와 데이터 로드하기!
 
 # ------------------------------------------------------------------------------
@@ -36,8 +37,6 @@ mlr$coefficients %>%
     `t-statistic` = round(`t-statistic`, 2),
     `p-value` = ifelse(`p-value` < 0.0001, "< 0.0001", round(`p-value`, 4))
     ) -> tb
-
-tb
 
 ### Correlation Matrix를 만들어 출력해주세요!
 
@@ -87,7 +86,32 @@ correlation_table <- correlation_table %>%
     )
   )
 
-correlation_table
 
+coef_table_html <- tb %>%
+  kbl(caption = "Multiple Linear Regression Coefficients") %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE
+  )
 
+corr_table_html <- correlation_table %>%
+  kbl(caption = "Correlation Matrix (Upper Triangular)") %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE
+  )
 
+html_output <- tagList(
+  div(
+    style = "float:left; width:45%; margin-right:5%;",
+    HTML(coef_table_html)
+  ),
+  div(
+    style = "float:left; width:45%;",
+    HTML(corr_table_html)
+  )
+)
+
+tmp_file <- tempfile(fileext = ".html")
+save_html(html_output, file = tmp_file)
+viewer(tmp_file)
