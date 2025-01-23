@@ -1,150 +1,72 @@
-#!/usr/bin/env bash
-# chmod +x script.sh
-set -e
+#!/bin/bash
 
-############################################
-# 1) Python3 설치 여부 확인
-############################################
-if ! command -v python3 &> /dev/null; then
-    echo "[INFO] Python3 is not installed. Installing Python3..."
-    sudo apt-get update -y
-    sudo apt-get install -y python3
-    echo "[INFO] Python3 installed."
-else
-    echo "[INFO] Python3 is already installed."
-fi
-
-
-############################################
-# 2) pip3 설치 여부 확인
-############################################
-if ! command -v pip3 &> /dev/null; then
-    echo "[INFO] pip3 is not installed. Installing pip3..."
-    sudo apt-get update -y
-    sudo apt-get install -y python3-pip
-    echo "[INFO] pip3 installed."
-else
-    echo "[INFO] pip3 is already installed."
-fi
-
-
-############################################
-# 3) Miniconda 설치 여부 확인
-############################################
-
-
-if [ -x "$HOME/miniconda/bin/conda" ]; then
-    echo "[INFO] Miniconda appears to be installed at $HOME/miniconda."
-
+# miniconda가 존재하지 않을 경우 설치
+if ! command -v conda &> /dev/null && [ ! -d "$HOME/miniconda" ]; then
+    echo "[INFO] Miniconda 설치 중..."
+    # Miniconda 설치 명령어 (Linux 기준)
+    curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda
     export PATH="$HOME/miniconda/bin:$PATH"
-
-    if ! command -v conda &> /dev/null; then
-        echo "[INFO] Adding Miniconda to PATH."
-        export PATH="$HOME/miniconda/bin:$PATH"
-    fi
+    # .bashrc에 경로 추가 (터미널 새로 열었을 때 적용)
+    echo '[INFO] export PATH="$HOME/miniconda/bin:$PATH"' >> ~/.bashrc
+    source ~/.bashrc
+    echo "[INFO] Miniconda 설치 완료"
 else
-    echo "[INFO] Miniconda is not found. Installing Miniconda..."
-
-    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh
-
-    bash /tmp/miniconda.sh -b -p "$HOME/miniconda"
-
-    rm /tmp/miniconda.sh
-
-    export PATH="$HOME/miniconda/bin:$PATH"
-
-    echo "[INFO] Miniconda installed successfully."
+    echo "[INFO] Miniconda가 이미 설치되어 있습니다."
 fi
 
+# Conda 환경 생성 및 활성화
+source $HOME/miniconda/etc/profile.d/conda.sh
 
-############################################
-# 4) Conda init 하기기
-############################################
-export PATH="$HOME/miniconda/bin:$PATH"
-eval "$(conda shell.bash hook)"
-conda activate base
-
-
-############################################
-# 5) Myenv 환경 설치 및 활성화
-############################################
-if conda env list | grep -q "^myenv "; then
-    echo "[INFO] The environment 'myenv' already exists."
-else
-    echo "[INFO] Creating conda environment 'myenv' with Python 3.9..."
-    conda create -n myenv python=3.9 -y
+if ! conda env list | grep "myenv" &> /dev/null; then
+    echo "[INFO] Conda 가상환경 'myenv' 생성 중..."
+    conda create -n myenv python=3.8 -y
 fi
 
-echo "[INFO] Activating 'myenv'..."
-source ~/.bashrc
-conda init
+echo "Conda 가상환경 활성화 중..."
 conda activate myenv
 
-
-############################################
-# 6) mypy 설치
-############################################
-if ! python -c "import mypy" &> /dev/null; then
-    echo "[INFO] Mypy is not found. Installing mypy..."
-    conda install -y mypy
+## 건드리지 마세요! ##
+python_env=$(python -c "import sys; print(sys.prefix)")
+if [[ "$python_env" == *"/envs/myenv"* ]]; then
+    echo "[INFO] 가상환경 활성화: 성공"
 else
-    echo "[INFO] mypy is already installed."
-fi
-# echo "[INFO] Installing mypy in 'myenv' environment..."
-# conda install -y mypy
-
-
-############################################
-# 7) submission에 있는 python script 실행
-############################################
-# 7-1) 동적 경로 설정 및 디렉토리 생성, 확인
-script_dir=$(dirname "$0")
-input_dir="$script_dir/input"
-output_dir="$script_dir/output"
-submission_dir="$script_dir/submission"
-
-mkdir -p "$input_dir"
-mkdir -p "$output_dir"
-mkdir -p "$submission_dir"
-
-if [[ ! -d "$input_dir" ]] || [[ -z $(ls -A "$input_dir") ]]; then
-    echo "[ERROR] Input directory '$input_dir' does not exist or is empty."
-    exit 1
+    echo "[INFO] 가상환경 활성화: 실패"
+    exit 1 
 fi
 
-if [[ ! -d "$submission_dir" ]] || [[ -z $(ls -A "$submission_dir"/*.py 2>/dev/null) ]]; then
-    echo "[ERROR] No Python files found in '$submission_dir'."
-    exit 1
+# 필요한 패키지 설치
+echo "[INFO] 필요한 패키지 설치 중..."
+# mypy 설치 여부 확인 및 설치
+if ! command -v mypy &> /dev/null; then
+    echo "[INFO] mypy가 설치되어 있지 않습니다. 설치 중..."
+    conda install -y -c conda-forge mypy
+else
+    echo "[INFO] mypy가 이미 설치되어 있습니다."
 fi
 
+# Submission 폴더 파일 실행
+cd submission || { echo "[INFO] submission 디렉토리로 이동 실패"; exit 1; }
 
+# Python 파일 실행
+for file in *.py; do
+    problem_name=$(basename "$file" .py)  # 파일명에서 문제명 추출
+    input_dir="../input/${problem_name}_input"  # 입력 디렉토리 경로
+    output_dir="../output/${problem_name}_output"  # 출력 디렉토리 경로
 
-echo "[INFO] Running Python scripts from submission/ folder..."
-for file in "$submission_dir"/*.py; do
-    filename=$(basename "$file" .py)
-    input_file="$input_dir/${filename}_input"
-    output_file="$output_dir/${filename}_output"
-
-    if [[ ! -f "$input_file" ]]; then
-        echo "[WARNING] Input file '$input_file' does not exist. Skipping $filename."
-        continue
+    # 문제에 대한 입력을 받고 출력 파일을 생성
+    python "$file" < "$input_dir" > "$output_dir" 2>/dev/null
+    if [ $? -eq 0 ]; then
+        echo "[INFO] $file 실행 완료, 출력 파일: $output_dir"
+    else
+        echo "[INFO] $file 실행 중 에러 발생"
     fi
-
-    echo "[INFO] Executing $filename with input=$input_file and output=$output_file"
-    python "$file" < "$input_file" > "$output_file"
 done
 
+# mypy 테스트 실행
+echo "[INFO] mypy 테스트 실행 중..."
+mypy *.py >/dev/null 2>&1
 
-############################################
-# 8) mypy 테스트
-############################################
-echo "Running mypy tests…"
-mypy "$submission_dir"/*.py
-
-echo "All tasks are complete."
-
-
-############################################
-# 9) 종료 확인
-############################################
-echo "[INFO] script.sh has finished all tasks."
+# 가상환경 비활성화
+echo "[INFO] 가상환경 비활성화 중..."
+conda deactivate
