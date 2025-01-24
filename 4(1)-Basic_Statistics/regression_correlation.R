@@ -89,29 +89,23 @@ correlation_table <- correlation_table %>%
 
 coef_table_html <- tb %>%
   kbl(caption = "Multiple Linear Regression Coefficients") %>%
-  kable_styling(
-    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
-    full_width = FALSE
-  )
+  kable_classic(full_width = FALSE, html_font = "Cambria")
 
 corr_table_html <- correlation_table %>%
-  kbl(caption = "Correlation Matrix (Upper Triangular)") %>%
-  kable_styling(
-    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
-    full_width = FALSE
-  )
+  kbl(caption = "Correlation Matrix") %>%
+  kable_classic(full_width = FALSE, html_font = "Cambria")
+
 
 html_output <- tagList(
-  div(
-    style = "float:left; width:45%; margin-right:5%;",
-    HTML(coef_table_html)
-  ),
-  div(
-    style = "float:left; width:45%;",
-    HTML(corr_table_html)
-  )
+  HTML(coef_table_html),
+  br(),
+  HTML(corr_table_html)
 )
 
 tmp_file <- tempfile(fileext = ".html")
 save_html(html_output, file = tmp_file)
 viewer(tmp_file)
+
+# tmp_file <- tempfile(fileext = ".html")
+# save_html(html_output, file = tmp_file)
+# browseURL(tmp_file)
