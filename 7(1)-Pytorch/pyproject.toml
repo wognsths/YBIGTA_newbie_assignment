@@ -1,0 +1,3 @@
+[[tool.mypy.overrides]]
+module = ["torch", "torch.nn", "torch.optim", "torch.utils.data", "torchvision", "torch.nn.functional", "torch.backends.cudnn","torch.backends" ]
+ignore_missing_imports = true
