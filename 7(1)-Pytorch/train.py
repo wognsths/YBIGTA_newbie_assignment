@@ -10,17 +10,34 @@ from config import *
 NUM_CLASSES = 10  
 
 # CIFAR-10 데이터셋 로드
-train_dataset = datasets.CIFAR10(root="./data", train=True, download=True)
+transform_train = transforms.Compose([
+    transforms.RandomCrop(32, padding=4),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))  # CIFAR-10 평균, 표준편차로 정규화
+])
+
+transform_test = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))
+])
+
+train_dataset = datasets.CIFAR10(root="./data", train=True, download=True, transform=transform_train)
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-test_dataset = datasets.CIFAR10(root="./data", train=False, download=True)
+test_dataset = datasets.CIFAR10(root="./data", train=False, download=True, transform=transform_test)
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # resnet 18 선언하기
 ## TODO
-model = None
+model = ResNet(
+    block=BasicBlock,
+    num_blocks=[2, 2, 2, 2],
+    num_classes=NUM_CLASSES,
+    init_weights=True
+).to(device)
 
 criterion: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
 optimizer: optim.Adam = optim.Adam(model.parameters(), lr=LEARNING_RATE)
