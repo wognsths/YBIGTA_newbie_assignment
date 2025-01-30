@@ -7,7 +7,7 @@ from typing import Any
 from resnet import ResNet, BasicBlock
 from config import *
 
-NUM_CLASSES = 10  
+NUM_CLASSES = 10
 
 # CIFAR-10 데이터셋 로드
 transform_train = transforms.Compose([
@@ -88,13 +88,33 @@ def evaluate(model: nn.Module, loader: DataLoader, criterion: nn.Module, device:
 
     accuracy: float = 100. * correct / total
     print(f"Test Loss: {total_loss / len(loader):.4f}, Accuracy: {accuracy:.2f}%")
+    return accuracy
 
 # 학습 및 평가 루프
+patience = 5
+best_accuracy = 0.0
+counter = 0
+
+best_model_weights = None
+
 for epoch in range(EPOCHS):
     print(f"Epoch {epoch + 1}/{EPOCHS}")
     train(model, train_loader, criterion, optimizer, device)
-    evaluate(model, test_loader, criterion, device)
+    current_accuracy = evaluate(model, test_loader, criterion, device)
 
+    if current_accuracy > best_accuracy + 1e-4:
+        best_accuracy = current_accuracy
+        best_model_weights = model.state_dict()
+        counter = 0
+    else:
+        counter += 1
+        print(f"No improvement. EarlyStopping counter: {counter}/{patience}")
+    if counter >= patience:
+        print("Early stopping triggered")
+        break
 # 모델 저장
+if best_model_weights is not None:
+    model.load_state_dict(best_model_weights)
+
 torch.save(model.state_dict(), "resnet18_checkpoint.pth")
 print(f"Model saved to resnet18_checkpoint.pth")

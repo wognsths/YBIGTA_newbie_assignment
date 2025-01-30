@@ -91,7 +91,7 @@ class ResNet(nn.Module):
         
         ## TODO
         for s in strides:
-            layers.append(block(self.in_channels, out_channels, stride))
+            layers.append(block(self.in_channels, out_channels, s))
             self.in_channels = out_channels * block.expansion
         
         return nn.Sequential(*layers)
