@@ -1,6 +1,5 @@
 import torch
 from torch import nn, Tensor
-import torch.nn.functional as F
 
 
 class GRUCell(nn.Module):
@@ -17,9 +16,9 @@ class GRUCell(nn.Module):
         self.linear_U = nn.Linear(input_size, hidden_size)
 
     def forward(self, x: Tensor, h: Tensor) -> Tensor:
-        r_t = F.sigmoid(self.linear_Wr(h) + self.linear_Ur(x))
-        u_t = F.sigmoid(self.linear_Wu(h) + self.linear_Uu(x))
-        h_t_tilde = F.tanh(self.linear_W(h * r_t) + self.linear_U(x))
+        r_t = torch.sigmoid(self.linear_Wr(h) + self.linear_Ur(x))
+        u_t = torch.sigmoid(self.linear_Wu(h) + self.linear_Uu(x))
+        h_t_tilde = torch.tanh(self.linear_W(h * r_t) + self.linear_U(x))
         h_t = (1 - u_t) * h + u_t * h_t_tilde
         
         return h_t
