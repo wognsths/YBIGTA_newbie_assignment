@@ -27,27 +27,25 @@ if __name__ == "__main__":
     model = MyGRULanguageModel(d_model, hidden_size, num_classes, embeddings).to(device)
 
     # (1) Embedding 레이어 Unfreeze 설정
-    #     from_pretrained(... freeze=True)이더라도 아래와 같이 requires_grad를 True로 바꾸면 학습 가능
+    #     requires_grad = True로 설정하여 학습 중에도 업데이트될 수 있도록 함
     model.embeddings.weight.requires_grad = True
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
     # (2) lr_scheduler 적용 (ReduceLROnPlateau) - validation f1이 개선되지 않으면 lr 감소
+    #     F1 점수가 높아질수록 성능이 좋아진 것으로 판단
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='max', factor=0.5, patience=1, verbose=True
     )
 
     # load train, validation, test dataset
     dataset = load_dataset("google-research-datasets/poem_sentiment")
-    train_loader = DataLoader(dataset["train"], batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(dataset["train"], batch_size=batch_size, shuffle=True) # Shuffle=True로 일반화 성능 향상
     validation_loader = DataLoader(dataset["validation"], batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(dataset["test"], batch_size=batch_size, shuffle=False)
 
-    # (3) num_epochs 조정 -> 예: 기존 10에서 20으로
-    # config.py에 있는 값을 덮어쓰거나 직접 숫자 입력
-    # num_epochs = 20
-    num_epochs = num_epochs  # config.py값 그대로 쓸 수도 있음
+    num_epochs = num_epochs
 
     for epoch in range(num_epochs):
         model.train()
@@ -59,21 +57,9 @@ if __name__ == "__main__":
 
             labels = data["label"].to(device)
 
-            # (4) 간단한 Dropout 예시 (임시):
-            # input_ids를 임베딩한 후에 dropout을 적용하려면 model.forward 내부 수정이 필요하지만
-            # 아래처럼 임시로 적용해볼 수도 있음 (구조가 다소 어색함)
-            #
-            # with torch.no_grad():
-            #     embedded = model.embeddings(input_ids)
-            # embedded = F.dropout(embedded, p=0.3, training=model.training)
-            # logits = model.head(model.gru(embedded))
-
             logits = model(input_ids)
             loss = criterion(logits, labels)
             loss.backward()
-
-            # gradient clipping 예시 (선택)
-            # nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
 
             optimizer.step()
             loss_sum += loss.item()

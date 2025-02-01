@@ -1,8 +1,11 @@
 import random
+
 import torch
 from torch import nn, Tensor
 from torch.optim import Adam
+
 from transformers import PreTrainedTokenizer
+
 from typing import Literal
 
 class Word2Vec(nn.Module):
@@ -16,16 +19,16 @@ class Word2Vec(nn.Module):
     ):
         super().__init__()
         self.embeddings = nn.Embedding(vocab_size, d_model)
-        self.weight = nn.Linear(d_model, vocab_size, bias=False)
+        self.weight = nn.Linear(d_model, vocab_size, bias=False) # y = x @ W.T (batch_size, d_model) * (d_model, vocab_size)
         self.window_size = window_size
         self.method = method
-        self.device = device
+        # 구현하세요!
 
-        # 모델 자체를 GPU 혹은 CPU로 이동
+        self.device = device
         self.to(device)
 
     def embeddings_weight(self) -> Tensor:
-        return self.embeddings.weight.detach()
+        return self.embeddings.weight.detach() # Gradient 추적을 끊기 위한 방법 -> 학습 이후 모델의 임베딩 값을 가져올 수 있다.
 
     def fit(
         self,
@@ -59,11 +62,15 @@ class Word2Vec(nn.Module):
         criterion: nn.CrossEntropyLoss,
         batch_size: int
     ) -> None:
-        """Skip-Gram을 미니배치로 학습"""
+        '''Skip-gram을 미니배치로 학습'''
         self.train()
 
         # (1) (center, context) 쌍 전부 생성
-        pairs = []
+        # widow_size = 2, corpus = ['the', 'cat', 'is', 'on', 'the', 'tree'] 인 경우
+        # 토큰화 후 [0, 1, 2, 3, 0, 4]
+        # ex: 중심 단어 2 (is) -> 주변 단어 0 (the), 1 (cat), 3 (on), 0 (the)
+        # pairs = [(2, 0), (2, 1), (2, 3), (2, 0)] 
+        pairs: list[tuple] = []
         for center_idx in range(self.window_size, len(encoded_corpus) - self.window_size):
             center_word_id = encoded_corpus[center_idx]
             # 주변 단어들
@@ -73,12 +80,12 @@ class Word2Vec(nn.Module):
                 context_word_id = encoded_corpus[center_idx + t]
                 pairs.append((center_word_id, context_word_id))
 
-        # (2) 셔플
+        # (2) 셔플 -> 학습 다양성
         random.shuffle(pairs)
 
         # (3) 미니배치 단위로 학습
         total_loss = 0.0
-        num_batches = (len(pairs) + batch_size - 1) // batch_size  # 올림
+        num_batches = (len(pairs) + batch_size - 1) // batch_size
 
         for i in range(num_batches):
             batch_data = pairs[i*batch_size:(i+1)*batch_size]
@@ -93,14 +100,14 @@ class Word2Vec(nn.Module):
             batch_centers_t = torch.tensor(batch_centers, dtype=torch.long, device=self.device)
             batch_contexts_t = torch.tensor(batch_contexts, dtype=torch.long, device=self.device)
 
-            # (4) 순전파
+            # (4) Foward
             center_embed = self.embeddings(batch_centers_t)   # shape: (B, d_model)
             logits = self.weight(center_embed)                # shape: (B, vocab_size)
 
             # (5) 손실 계산
             loss = criterion(logits, batch_contexts_t)
 
-            # (6) 역전파 & 최적화
+            # (6) Backward
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -116,12 +123,12 @@ class Word2Vec(nn.Module):
         criterion: nn.CrossEntropyLoss,
         batch_size: int
     ) -> None:
-        """CBOW를 미니배치로 학습"""
+        '''CBOW를 미니배치로 학습'''
         self.train()
 
         # (1) (context_list, center) 쌍 전부 생성
         # context_list 길이는 2*window_size, center는 1개
-        cbow_data = []
+        cbow_data: list[tuple] = []
         for center_idx in range(self.window_size, len(encoded_corpus) - self.window_size):
             center_word_id = encoded_corpus[center_idx]
             context_ids = []
