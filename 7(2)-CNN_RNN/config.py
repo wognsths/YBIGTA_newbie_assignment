@@ -14,5 +14,5 @@ num_epochs_word2vec = 5
 hidden_size = 256
 num_classes = 4
 lr = 6e-03
-num_epochs = 20
+num_epochs = 15
 batch_size = 16
