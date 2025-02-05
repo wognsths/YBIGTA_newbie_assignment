@@ -5,7 +5,6 @@ from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 from datasets import load_dataset
 
-from tqdm import tqdm
 from sklearn.metrics import f1_score
 
 from word2vec import Word2Vec
