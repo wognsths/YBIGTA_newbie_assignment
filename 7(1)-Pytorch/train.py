@@ -68,7 +68,7 @@ def train(model: nn.Module, loader: DataLoader, criterion: nn.Module, optimizer:
     print(f"Train Loss: {total_loss / len(loader):.4f}, Accuracy: {accuracy:.2f}%")
 
 # 평가 
-def evaluate(model: nn.Module, loader: DataLoader, criterion: nn.Module, device: torch.device) -> None:
+def evaluate(model: nn.Module, loader: DataLoader, criterion: nn.Module, device: torch.device) -> float:
     model.eval()
     total_loss: float = 0
     correct: int = 0
